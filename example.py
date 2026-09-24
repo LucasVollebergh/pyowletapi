@@ -1,9 +1,9 @@
-from src.pyowletapi.api import OwletAPI
-from src.pyowletapi.sock import Sock
-from src.pyowletapi.exceptions import OwletError
-
 import asyncio
 import json
+
+from pyowletapi_ng.api import OwletAPI
+from pyowletapi_ng.exceptions import OwletError
+from pyowletapi_ng.sock import Sock
 
 
 async def run():

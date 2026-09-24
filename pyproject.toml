@@ -1,10 +1,59 @@
 [build-system]
-requires = ['setuptools>=42']
-build-backend = 'setuptools.build_meta'
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyowletapi-ng"
+version = "2026.9.0"
+description = "Async client for the Owlet Smart Sock cloud API, maintained continuation of pyowletapi"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "NOTICE"]
+authors = [
+  { name = "Ryan Clark" },
+  { name = "Lucas Vollebergh" },
+]
+maintainers = [{ name = "Lucas Vollebergh" }]
+requires-python = ">=3.12"
+dependencies = ["aiohttp>=3.9"]
+keywords = ["owlet", "api", "baby", "home-assistant"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Framework :: AsyncIO",
+  "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=0.23", "ruff"]
+
+[project.urls]
+Homepage = "https://github.com/lucasvollebergh/pyowletapi"
+Issues = "https://github.com/lucasvollebergh/pyowletapi/issues"
+Original = "https://github.com/ryanbdclark/pyowletapi"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pyowletapi_ng = ["py.typed"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP", "SIM", "ASYNC"]
+# SIM105/SIM210 kept as in the original code to keep the diff small.
+ignore = ["E501", "SIM105", "SIM210"]
+exclude = ["example.py"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = true
-explicit_package_bases = true
-
-

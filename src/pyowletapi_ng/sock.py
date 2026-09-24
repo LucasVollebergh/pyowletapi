@@ -1,11 +1,12 @@
-import logging
-from logging import Logger
-import json
 import datetime
+import json
+import logging
 import time
-from .api import OwletAPI, TokenDict, SockData
-from .const import PROPERTIES, VITALS_3, VITALS_2, PropertyKey, Properties
-from typing import Union, TypedDict, NotRequired, Any, Optional
+from logging import Logger
+from typing import Any, NotRequired, TypedDict
+
+from .api import OwletAPI, SockData, TokenDict
+from .const import PROPERTIES, VITALS_2, VITALS_3, Properties, PropertyKey
 
 logger: Logger = logging.getLogger(__package__)
 
@@ -85,7 +86,7 @@ class Sock:
         self._connection_status: str = data.get("connection_status", "Unknown")
         self._device_type: str = data.get("device_type", "Wifi")
         self._manuf_model: str = data.get("manuf_model", "Unknown")
-        self._version: Union[int, None] = None
+        self._version: int | None = None
         self._revision = None
 
         self._raw_properties: dict[str, dict[str, Any]] = {}
@@ -96,7 +97,7 @@ class Sock:
         return self._api
 
     @property
-    def version(self) -> Union[int, None]:
+    def version(self) -> int | None:
         return self._version
 
     @property
@@ -148,10 +149,35 @@ class Sock:
         return self._raw_properties
 
     @property
-    def revision(self) -> Optional[int]:
+    def revision(self) -> int | None:
         return self._revision
 
-    def get_property(self, property: PropertyKey) -> Union[bool, str, float, int, None]:
+    @property
+    def last_updated_at(self) -> datetime.datetime | None:
+        """Return when the Owlet cloud last received vitals from the sock, in UTC.
+
+        The Smart Sock 3 reports all vitals in REAL_TIME_VITALS, the Smart Sock 2
+        reports every vital as its own property, then the newest one is used.
+        """
+        keys = ["REAL_TIME_VITALS"]
+        if "REAL_TIME_VITALS" not in self._raw_properties:
+            keys = [key for vitals in VITALS_2.values() for key in vitals.values()]
+        timestamps = []
+        for key in keys:
+            value = self._raw_properties.get(key, {}).get("data_updated_at")
+            if not isinstance(value, str):
+                continue
+            try:
+                timestamps.append(
+                    datetime.datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
+                        tzinfo=datetime.UTC
+                    )
+                )
+            except ValueError:
+                continue
+        return max(timestamps) if timestamps else None
+
+    def get_property(self, property: PropertyKey) -> bool | str | float | int | None:
         """Returns the specific property based on the property argument passed in.
 
         Parameters

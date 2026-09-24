@@ -1,0 +1,8 @@
+pyowletapi-ng
+
+Based on pyowletapi by Ryan Clark (https://github.com/ryanbdclark/pyowletapi),
+Copyright (c) 2022 ryanbdclark, licensed under the MIT License.
+
+Modified and maintained since September 2026 by Lucas Vollebergh
+(https://github.com/lucasvollebergh/pyowletapi). The changes are listed in
+CHANGELOG.md.

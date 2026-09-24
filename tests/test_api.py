@@ -220,3 +220,61 @@ async def test_get_devices_filters_versions(
 
     with pytest.raises(OwletDevicesError):
         await authed_api.get_devices([2])
+
+
+async def test_get_devices_reports_refreshed_tokens(
+    mock_api: FakeSession, session: FakeSession
+) -> None:
+    """The internal version check must not swallow the refreshed tokens."""
+    api = OwletAPI(
+        REGION, token="old", expiry=time.time() - 10, refresh="r", session=session
+    )
+    mock_refresh(mock_api)
+    mock_api.get(
+        f"{BASE}/devices.json", payload=[{"device": {"dsn": DSN}}], repeat=True
+    )
+    mock_api.post(ACTIVATE_URL, payload={}, repeat=True)
+    mock_api.get(PROPERTIES_URL, payload=load("properties_v3.json"), repeat=True)
+
+    devices = await api.get_devices()
+
+    assert devices["tokens"]["api_token"] == "new_token"
+
+
+@pytest.mark.parametrize("exception", [aiohttp.ClientConnectionError(), TimeoutError()])
+async def test_login_network_error_raises_connection_error(
+    mock_api: FakeSession, session: FakeSession, exception: BaseException
+) -> None:
+    mock_api.post(VERIFY_URL, exception=exception)
+    api = OwletAPI(REGION, "user@example.com", "secret", session=session)
+    with pytest.raises(OwletConnectionError):
+        await api.authenticate()
+
+
+async def test_refresh_network_error_raises_connection_error(
+    mock_api: FakeSession, session: FakeSession
+) -> None:
+    api = OwletAPI(
+        REGION, token="old", expiry=time.time() - 10, refresh="r", session=session
+    )
+    mock_api.post(
+        f"https://securetoken.googleapis.com/v1/token?key={REGION_INFO[REGION]['apiKey']}",
+        exception=TimeoutError(),
+    )
+    with pytest.raises(OwletConnectionError):
+        await api.authenticate()
+
+
+async def test_validate_authentication_returns_tokens_refreshed_before_check(
+    mock_api: FakeSession, session: FakeSession
+) -> None:
+    api = OwletAPI(
+        REGION, token="old", expiry=time.time() - 10, refresh="r", session=session
+    )
+    mock_refresh(mock_api)
+    mock_api.get(f"{BASE}/devices.json", payload=[])
+
+    tokens = await api.validate_authentication()
+
+    assert tokens is not None
+    assert tokens["api_token"] == "new_token"

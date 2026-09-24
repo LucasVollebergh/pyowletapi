@@ -360,20 +360,25 @@ class OwletAPI:
         dict: If auth token generated then dict with the new token returned
 
         """
-        if self._auth_token is None and self._refresh is None:
-            if self._user is None or self._password is None:
-                raise OwletAuthenticationError(
-                    "Username or password not supplied",
-                )
+        try:
+            if self._auth_token is None and self._refresh is None:
+                if self._user is None or self._password is None:
+                    raise OwletAuthenticationError(
+                        "Username or password not supplied",
+                    )
 
-            await self.password_verification()
+                await self.password_verification()
 
-        if (
-            self._auth_token is None
-            or self._expiry is None
-            or self._expiry <= time.time()
-        ):
-            return await self.refresh_authentication()
+            if (
+                self._auth_token is None
+                or self._expiry is None
+                or self._expiry <= time.time()
+            ):
+                return await self.refresh_authentication()
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise OwletConnectionError(
+                f"Error connecting to the Owlet login service: {err}"
+            ) from err
 
         return None
 
@@ -386,14 +391,14 @@ class OwletAPI:
         dict: the new tokens when re-authentication was needed
 
         """
-        await self.authenticate()
+        refreshed = await self.authenticate()
         status = await self._raw_status("GET", "/devices.json")
         if status in (401, 403):
             self._invalidate_token()
             return await self.authenticate()
         if status not in (200, 201):
             raise OwletConnectionError(f"Owlet API returned status {status}")
-        return None
+        return refreshed
 
     def _invalidate_token(self) -> None:
         """Forget the access token so the next authenticate call refreshes it."""
@@ -438,8 +443,7 @@ class OwletAPI:
             self._tokens_changed = True
 
     async def _is_valid_version(self, dsn: str, versions: list[int]) -> bool:
-        properties = await self.get_properties(dsn)
-        properties_item = properties["response"]
+        properties_item = await self._fetch_properties(dsn)
         if "REAL_TIME_VITALS" in properties_item:
             return 3 in versions
         if "CHARGE_STATUS" in properties_item:
@@ -531,6 +535,17 @@ class OwletAPI:
         (dict):A dictionary containing all the current properties for the request device
 
         """
+        response: PropertiesResponse = {
+            "response": await self._fetch_properties(device)
+        }
+
+        if self._tokens_changed:
+            response["tokens"] = self.tokens
+            self._tokens_changed = False
+        return response
+
+    async def _fetch_properties(self, device: str) -> dict[str, dict[str, Any]]:
+        """Fetch the raw properties without reporting refreshed tokens."""
         await self._maybe_activate(device)
         api_response = await self._request(
             "GET",
@@ -538,16 +553,7 @@ class OwletAPI:
         )
         if not isinstance(api_response, list):
             raise OwletError("Unexpected response type from request.")
-
-        properties = {
-            item["property"]["name"]: item["property"] for item in api_response
-        }
-        response: PropertiesResponse = {"response": properties}
-
-        if self._tokens_changed:
-            response["tokens"] = self.tokens
-            self._tokens_changed = False
-        return response
+        return {item["property"]["name"]: item["property"] for item in api_response}
 
     async def post_command(
         self,

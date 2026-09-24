@@ -34,7 +34,11 @@ async def main() -> None:
 
         for sock in socks:
             result = await sock.update_properties()
-            print(sock.serial, result["properties"].get("heart_rate"), sock.last_updated_at)
+            print(
+                sock.serial,
+                result["properties"].get("heart_rate"),
+                sock.last_updated_at,
+            )
 ```
 
 - `region` is `"europe"` for accounts created in the EU or UK, `"world"` otherwise.

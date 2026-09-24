@@ -9,7 +9,8 @@ First release as `pyowletapi-ng`, the maintained continuation of [pyowletapi](ht
 - Python 3.12 or newer.
 
 ### Fix
-- Tokens refreshed while polling are reported by `get_devices()` and `get_properties()` instead of being lost.
+- Tokens refreshed while polling are reported by `get_devices()`, `get_properties()` and `validate_authentication()` instead of being lost.
+- Network errors and timeouts while logging in or refreshing tokens raise `OwletConnectionError` instead of raw aiohttp errors.
 - `get_properties()` no longer crashes on an empty property list and reports refreshed tokens only once.
 - No re-login loop on 5xx responses, rejected tokens are refreshed and the request retried once.
 - The identitytoolkit error pattern for missing email/password or an invalid API key now matches.
